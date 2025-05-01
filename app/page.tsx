@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SearchBar from '@/components/SearchBar';
 import SearchResults from '@/components/SearchResults';
-import { SearchResult } from '@/types/supabase';
+import { SearchResult } from '@/types/index';
 
 export default function Home() {
   const [query, setQuery] = useState('');
