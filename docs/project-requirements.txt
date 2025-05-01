@@ -1,0 +1,12 @@
+Need to build a PDF search application that:
+    - Searches for PDF files related to user queries using Google Search
+    - Filters down to the relevant pages within those PDFs
+    - Shows previews of the relevant pages
+    - Maintains a global search history accessible to all users
+    - Allows users to print specific pages
+    - Provides immediate feedback during search operations
+
+
+
+
+

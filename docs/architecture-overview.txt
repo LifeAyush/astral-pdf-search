@@ -1,0 +1,17 @@
+Backend Components:
+    - Supabase Database for storing:
+        - Search history
+        - Cached search results to avoid repeating searches
+        - Metadata about PDFs and their relevant pages
+
+    - API Routes for:
+        - Performing searches
+        - Retrieving search history
+        - Retrieving cached results
+        - PDF processing and page extraction
+
+Frontend Components:
+    - Search Interface - Search bar with history dropdown
+    - Results Display - Cards showing PDF info with page previews
+    - PDF Preview - View of relevant pages
+    - Loading States - Progressive loading indicators
