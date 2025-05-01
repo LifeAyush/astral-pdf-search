@@ -89,7 +89,7 @@ export default function SearchBar({
               setShowHistory(true);
             }}
             placeholder="Search for PDF worksheets, e.g., 'Multiplication 2 digit worksheets'"
-            className="w-full py-3 px-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none"
+            className="w-full py-3 px-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-white"
             disabled={isSearching}
           />
           <MagnifyingGlassIcon

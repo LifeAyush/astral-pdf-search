@@ -172,7 +172,7 @@ export default function Home() {
   }, []);
   
   return (
-    <main className="min-h-screen p-4 md:p-8 lg:p-12">
+    <main className="w-full min-h-screen p-4 md:p-8 lg:p-12">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-center">PDF Search</h1>
         
