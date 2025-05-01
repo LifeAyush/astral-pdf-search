@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { DocumentTextIcon, ArrowTopRightOnSquareIcon, PrinterIcon } from '@heroicons/react/24/outline';
-import { SearchResult, PageRange } from '@/types/supabase';
+import { SearchResult, PageRange } from '@/types/index';
 
 interface SearchResultsProps {
   results: SearchResult[];
