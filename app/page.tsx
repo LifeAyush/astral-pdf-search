@@ -1,77 +1,206 @@
-'use client'
+'use client';
 
-import { GradeDropdown, Grade } from '@/components/GradeDropdown';
-import { SearchBar } from '@/components/SearchBar';
-import { useState } from 'react';
-import { SearchResults } from '@/components/SearchResults';
-import { SearchResultType } from '@/types';
-
-// Fixture data for search results
-const searchResults: SearchResultType[] = [
-  {
-    id: 0,
-    title: "Advanced Multiplication Practice: 3-Digit Numbers",
-    description: "Detailed worksheets focusing on advanced multiplication techniques for 3-digit numbers. Perfect for students looking to strengthen their multiplication skills.",
-    image: "https://images.twinkl.co.uk/tw1n/image/private/s--iB_aQ8je--/e_sharpen:100,q_auto:eco,w_1260/image_repo/e5/55/t2-m-1457-long-multiplication-practice-3-digits-x-2-digits_ver_3.jpeg",
-    totalPages: 15
-  },
-  {
-    id: 1,
-    title: "Thanksgiving-Themed 2-Digit Multiplication Worksheets",
-    description: "Engaging Thanksgiving-themed worksheets for practicing 2-digit by 2-digit multiplication. Includes fun coloring activities to make learning multiplication more enjoyable.",
-    image: "https://ecdn.teacherspayteachers.com/thumbitem/THANKSGIVING-Multiplication-Coloring-Worksheets-2-DIGIT-X-2-DIGIT-4998456-1572905399/original-4998456-4.jpg",
-    totalPages: 24,
-    relevantPages: { startPage: 3, endPage: 10 }
-  },
-  {
-    id: 2,
-    title: "Long Multiplication Practice: 3-Digits by 2-Digits",
-    description: "Comprehensive practice worksheets for mastering long multiplication with 3-digit by 2-digit numbers. Includes step-by-step examples and practice problems.",
-    image: "https://images.twinkl.co.uk/tw1n/image/private/t_630/image_repo/62/d0/T2-M-1457-Long-Multiplication-Practice-3-Digits-x-2-Digits.jpg",
-    totalPages: 18,
-    relevantPages: { startPage: 1, endPage: 18 }
-  },
-];
+import { useState, useEffect, useRef } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import SearchBar from '@/components/SearchBar';
+import SearchResults from '@/components/SearchResults';
+import { SearchResult } from '@/types/supabase';
 
 export default function Home() {
-  const [selectedGrade, setSelectedGrade] = useState<Grade>(Grade.ALL);
-  const [searchQuery, setSearchQuery] = useState("Volcanoes");
+  const [query, setQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchHistory, setSearchHistory] = useState<{id: string, query: string}[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [currentSearchId, setCurrentSearchId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const searchParams = useSearchParams();
   
-  // Mock search history data
-  const searchHistory = [
-    "Volcanoes",
-    "Earthquakes",
-    "Plate Tectonics",
-    "Natural Disasters",
-    "Geology Basics"
-  ];
-
-  return (
-    <div className="flex flex-col items-center w-full sm:w-3/4 max-w-full mx-auto pt-6">
-      <div className="w-full px-4 relative">
-        <h1 className="text-2xl font-semibold mb-4">PDF Search</h1>
-        {/* Search bar and grade dropdown container */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-stretch">
-            <div className="flex-1">
-              <SearchBar 
-                value={searchQuery}
-                onChange={setSearchQuery}
-                placeholder="Search..."
-                history={searchHistory}
-              />
-            </div>
-            <div className="ml-4 relative z-10 h-12">
-              <GradeDropdown value={selectedGrade} onChange={setSelectedGrade} />
-            </div>
-          </div>
-        </div>
-      </div>
+  // Refs for polling
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  
+  // Load search history on component mount
+  useEffect(() => {
+    fetchSearchHistory();
+  }, []);
+  
+  // Check for search ID in URL
+  useEffect(() => {
+    const searchId = searchParams.get('id');
+    if (searchId) {
+      fetchResultsById(searchId);
+    }
+  }, [searchParams]);
+  
+  // Function to fetch search history
+  const fetchSearchHistory = async () => {
+    try {
+      const response = await fetch('/api/history');
+      const data = await response.json();
       
-      {/* Search results section */}
-      <div className="w-full px-4 mt-6">
-        <SearchResults results={searchResults} />
+      if (data.searches) {
+        setSearchHistory(data.searches);
+      }
+    } catch (error) {
+      console.error('Error fetching search history:', error);
+    }
+  };
+  
+  // Function to fetch results by search ID
+  const fetchResultsById = async (searchId: string) => {
+    try {
+      setIsSearching(true);
+      setError(null);
+      
+      const response = await fetch(`/api/results/${searchId}`);
+      const data = await response.json();
+      
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+      
+      setQuery(data.query);
+      setSearchResults(data.results);
+      setCurrentSearchId(searchId);
+      
+      // Start polling for updates if any results are still processing
+      const hasProcessingResults = data.results.some(
+        (result: SearchResult) => result.status === 'processing'
+      );
+      
+      if (hasProcessingResults) {
+        startPolling(searchId);
+      }
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Function to handle search submissions
+  const handleSearch = async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    
+    try {
+      setIsSearching(true);
+      setError(null);
+      setSearchResults([]);
+      
+      // Stop any existing polling
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+        pollingInterval.current = null;
+      }
+      
+      const response = await fetch('/api/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+      
+      setSearchResults(data.results);
+      setCurrentSearchId(data.searchId);
+      
+      // Update URL with search ID for shareable links
+      router.push(`/?id=${data.searchId}`);
+      
+      // Refresh search history after new search
+      fetchSearchHistory();
+      
+      // Start polling for updates if not cached and has processing results
+      if (!data.isCached) {
+        startPolling(data.searchId);
+      }
+    } catch (error: any) {
+      setError(error.message);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  
+  // Function to start polling for result updates
+  const startPolling = (searchId: string) => {
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+    }
+    
+    pollingInterval.current = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/results/${searchId}`);
+        const data = await response.json();
+        
+        setSearchResults(data.results);
+        
+        // Check if all results are processed
+        const allProcessed = data.results.every(
+          (result: SearchResult) => result.status !== 'processing'
+        );
+        
+        if (allProcessed && pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        }
+      } catch (error) {
+        console.error('Polling error:', error);
+        
+        // Stop polling on error
+        if (pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+  };
+  
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
+  }, []);
+  
+  return (
+    <main className="min-h-screen p-4 md:p-8 lg:p-12">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-8 text-center">PDF Search</h1>
+        
+        <SearchBar
+          query={query}
+          setQuery={setQuery}
+          onSearch={handleSearch}
+          isSearching={isSearching}
+          searchHistory={searchHistory}
+          showHistory={showHistory}
+          setShowHistory={setShowHistory}
+          onHistoryItemClick={(item) => {
+            setShowHistory(false);
+            fetchResultsById(item.id);
+          }}
+        />
+        
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {error}
+          </div>
+        )}
+        
+        <SearchResults
+          results={searchResults}
+          isLoading={isSearching}
+        />
       </div>
-    </div>
+    </main>
   );
 }
