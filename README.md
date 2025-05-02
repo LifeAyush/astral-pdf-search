@@ -1,31 +1,31 @@
-# PDF Search Application
+# 📄 PDF Search Application
 
-A full-stack web application to search, preview, and print relevant pages from publicly available PDFs. Built with Next.js, React, TypeScript, Tailwind CSS, and Supabase. Utilizes Google Custom Search API for external indexing and pdf.js/pdf-lib for client-side PDF processing.
+A full-stack web application to search, preview, and print relevant pages from publicly available PDFs. Built with **Next.js**, **React**, **TypeScript**, **Tailwind CSS**, and **Supabase**. Utilizes **Google Custom Search API** for external indexing and **pdf.js / pdf-lib** for client-side PDF processing.
 
 ---
 
 ## 🔍 Features
 
-- **Search PDFs** using Google Custom Search API (CSE)
-- **Identify relevant pages** from each PDF using keyword-based content scanning
-- **Preview first page** of each PDF result (rendered via `pdf.js`)
-- **Print selected pages** from identified PDFs using `pdf-lib`
-- **Real-time search updates** with streaming API support
-- **Persistent search history** saved to Supabase PostgreSQL
-- **Environment-agnostic** deployment (local dev, Vercel-ready)
+- 🔎 **Search PDFs** using Google Custom Search API (CSE)
+- 🧠 **Identify relevant pages** from each PDF using keyword-based content scanning
+- 🖼️ **Preview first page** of each PDF result (rendered via `pdf.js`)
+- 🖨️ **Print selected pages** from identified PDFs using `pdf-lib`
+- ⚡ **Real-time search updates** with streaming API support
+- 🕓 **Persistent search history** saved to Supabase PostgreSQL
+- 🌐 **Environment-agnostic** deployment (local dev, Vercel-ready)
 
 ---
 
 ## 🧱 Tech Stack
 
-| Layer        | Stack                                          |
-|--------------|------------------------------------------------|
+| Layer        | Stack                                                  |
+|--------------|--------------------------------------------------------|
 | Frontend     | Next.js (App Router), React 18, Tailwind CSS, TypeScript |
-| Backend API  | Next.js API Routes                             |
-| Database     | Supabase (PostgreSQL)                          |
+| Backend API  | Next.js API Routes                                     |
+| Database     | Supabase (PostgreSQL)                                  |
 | PDF Engine   | [pdf.js](https://mozilla.github.io/pdf.js/), [pdf-lib](https://pdf-lib.js.org/) |
-| Search API   | Google Programmable Search Engine              |
-| Hosting      | Vercel (or self-hosted)                        |
+| Search API   | Google Programmable Search Engine                      |
+| Hosting      | Vercel (or self-hosted)                                |
 
 ---
 
@@ -33,7 +33,7 @@ A full-stack web application to search, preview, and print relevant pages from p
 
 1. **Supabase Account** – [Create Supabase Project](https://app.supabase.com/)
 2. **Google CSE Key** – [Setup Programmable Search Engine](https://programmablesearchengine.google.com/)
-3. (Optional) **Vercel Account** – for zero-config deployment
+3. *(Optional)* **Vercel Account** – for zero-config deployment
 
 ---
 
@@ -48,33 +48,37 @@ cd pdf-search
 
 ### 2. Install Dependencies
 
+```bash
 npm install
 # or
 yarn install
 # or
 bun install
+```
 
 ### 3. Configure Environment Variables
 
-Copy and edit .env.example:
+Copy and edit `.env.local`:
 
+```bash
 cp .env.example .env.local
+```
 
-Variable	Description
-NEXT_PUBLIC_SUPABASE_URL	Supabase project URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY	Supabase public anon key
-SUPABASE_SERVICE_ROLE_KEY	Supabase server-side secret key (for API use)
-GOOGLE_CSE_ID	Google Programmable Search Engine ID
-GOOGLE_API_KEY	Google API Key with Search API enabled
+| Variable                     | Description                               |
+|-----------------------------|-------------------------------------------|
+| NEXT_PUBLIC_SUPABASE_URL    | Supabase project URL                      |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Supabase public anon key                 |
+| SUPABASE_SERVICE_ROLE_KEY   | Supabase server-side secret key (API use) |
+| GOOGLE_CSE_ID               | Google Programmable Search Engine ID      |
+| GOOGLE_API_KEY              | Google API Key with Search API enabled    |
 
-
-
-⸻
+---
 
 ### 4. Initialize Supabase Schema
 
 Use Supabase SQL Editor and run:
 
+```sql
 -- scripts/create-tables.sql
 CREATE TABLE searches (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -93,105 +97,115 @@ CREATE TABLE search_results (
   preview_image_url TEXT,
   cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+```
 
-Enable Row-Level Security and create appropriate policies to allow read/write by service role key only.
+> ✅ Enable **Row-Level Security** and create appropriate policies for read/write access using the service role key only.
 
-⸻
+---
 
 ### 5. Run the Development Server
 
+```bash
 npm run dev
 # or
 yarn dev
 # or
 bun dev
+```
 
-Access at http://localhost:3000
-
-⸻
-
-🧩 API Routes
-
-Endpoint	Method	Description
-/api/search	POST	Trigger Google CSE with user query
-/api/history	GET	Retrieve user search history
-/api/results/[id]	GET	Fetch results for a specific search ID
-/api/pdf-preview	GET	Render preview of PDF’s first page
-/api/print	POST	Return a trimmed PDF with selected pages
-
-
-
-⸻
-
-🛠 PDF Handling Logic
-	•	Parsing: PDFs fetched using fetch blob stream, rendered via pdf.js
-	•	Keyword Mapping: Pages scanned in client browser using basic regex keyword highlighting
-	•	Preview: Canvas rendering of first page as thumbnail image
-	•	Print: Selected page indices are extracted and recompiled into new file using pdf-lib
-
-⸻
-
-📊 Database Overview
-
-Table: searches
-
-Column	Type	Notes
-id	UUID	Primary key
-query	TEXT	Search string
-created_at	TIMESTAMP	Auto-generated
-
-Table: search_results
-
-Column	Type	Notes
-id	UUID	Primary key
-search_id	UUID	Foreign key referencing searches.id
-url	TEXT	Direct PDF URL
-title	TEXT	PDF title
-description	TEXT	Snippet or abstract
-total_pages	INTEGER	Page count from pdf.js
-relevant_pages	JSONB	List of page indices or ranges
-preview_image_url	TEXT	CDN link for cached preview (optional)
-cached_at	TIMESTAMP	Result cache timestamp
-
-
-
-⸻
-
-🧪 Future Enhancements
-	•	Semantic Search: Integrate OpenAI or Pinecone for vector-based page relevance.
-	•	User Accounts: OAuth via Supabase Auth for personalized history and privacy.
-	•	OCR Support: Enhance scanned PDF indexing using Tesseract.js or external service.
-	•	Batch Download/Print: Multi-PDF operations with zip or concatenated PDFs.
-	•	Export: Annotations or page snapshots exportable to .md, .txt, .csv.
-	•	Usage Analytics: Build Supabase-based dashboard for query and doc interaction stats.
-
-⸻
-
-🚀 Deployment (Vercel)
-	1.	Push code to GitHub
-	2.	Import in Vercel
-	3.	Add .env variables via dashboard
-	4.	Build and deploy
-
-⸻
-
-🔐 Security
-	•	All Supabase access is scoped through service-role key for API route use only.
-	•	RLS enforces secure access for potential future multi-user support.
-	•	PDFs are fetched and processed client-side to reduce server load and avoid file storage.
-
-⸻
-
-📦 Limitations
-	•	Only public PDFs indexed by Google CSE are accessible
-	•	No support for encrypted/password-protected PDFs
-	•	No deduplication or content de-duplication logic currently
-
-⸻
-
-🧮 TODO
-	•	Unit tests for page relevance algorithm
-	•	Supabase function for result deduplication
-	•	Rate-limiting middleware for /api/search calls
+Visit [http://localhost:3000](http://localhost:3000)
 
 ---
+
+## 🧩 API Routes
+
+| Endpoint               | Method | Description                                  |
+|------------------------|--------|----------------------------------------------|
+| `/api/search`          | POST   | Trigger Google CSE with user query           |
+| `/api/history`         | GET    | Retrieve user search history                 |
+| `/api/results/[id]`    | GET    | Fetch results for a specific search ID       |
+| `/api/pdf-preview`     | GET    | Render preview of PDF’s first page           |
+| `/api/print`           | POST   | Return a trimmed PDF with selected pages     |
+
+---
+
+## 🛠 PDF Handling Logic
+
+- **Parsing**: PDFs fetched as blob streams, rendered via `pdf.js`
+- **Keyword Mapping**: Regex-based scanning in browser
+- **Preview**: Rendered to `<canvas>` as thumbnail
+- **Print**: Recompiled PDF using selected pages via `pdf-lib`
+
+---
+
+## 📊 Database Overview
+
+### Table: `searches`
+
+| Column      | Type      | Notes                      |
+|-------------|-----------|----------------------------|
+| id          | UUID      | Primary key                |
+| query       | TEXT      | Search string              |
+| created_at  | TIMESTAMP | Auto-generated             |
+
+### Table: `search_results`
+
+| Column            | Type      | Notes                                |
+|-------------------|-----------|--------------------------------------|
+| id                | UUID      | Primary key                          |
+| search_id         | UUID      | Foreign key referencing `searches.id`|
+| url               | TEXT      | Direct PDF URL                       |
+| title             | TEXT      | PDF title                            |
+| description       | TEXT      | Snippet or abstract                  |
+| total_pages       | INTEGER   | Page count from `pdf.js`             |
+| relevant_pages    | JSONB     | List of relevant page indices        |
+| preview_image_url | TEXT      | Optional CDN link for preview        |
+| cached_at         | TIMESTAMP | Result cache timestamp               |
+
+---
+
+## 🧪 Future Enhancements
+
+- 🔍 **Semantic Search**: Use OpenAI or Pinecone for vector similarity
+- 🔐 **User Accounts**: Supabase Auth + OAuth support
+- 🧾 **OCR Support**: Tesseract.js for scanned documents
+- 🧷 **Batch Print/Download**: Combine or zip multiple PDFs
+- 📤 **Export**: Pages/annotations to `.md`, `.txt`, `.csv`
+- 📈 **Analytics Dashboard**: Built with Supabase
+
+---
+
+## 🚀 Deployment (Vercel)
+
+1. Push code to GitHub
+2. Import repository in [Vercel](https://vercel.com)
+3. Add environment variables in Vercel dashboard
+4. Deploy 🎉
+
+---
+
+## 🔐 Security
+
+- Supabase access is scoped through the **service-role** key for backend API usage only
+- **Row-Level Security (RLS)** enforces isolation and safety
+- PDF parsing and printing is **client-side only** to reduce server cost and enhance privacy
+
+---x
+
+## 📦 Limitations
+
+- Only **public PDFs indexed by Google** are accessible
+- No support for **encrypted/password-protected PDFs**
+- No content **deduplication** logic implemented yet
+
+---
+
+## 🧮 TODO
+
+- ✅ Unit tests for page relevance algorithm
+- ✅ Supabase function for deduplication
+- ✅ Rate-limiting middleware for `/api/search`
+
+---
+
+Made with ❤️ using open web tools by ayush.
