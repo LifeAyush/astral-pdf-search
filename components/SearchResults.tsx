@@ -5,46 +5,110 @@ import Image from 'next/image';
 import { DocumentTextIcon, ArrowTopRightOnSquareIcon, PrinterIcon } from '@heroicons/react/24/outline';
 import { SearchResult, PageRange } from '@/types/index';
 
+/**
+ * Props for the SearchResults component
+ */
 interface SearchResultsProps {
   results: SearchResult[];
   isLoading: boolean;
 }
 
+/**
+ * Displays search results as a grid of cards with PDF previews
+ * @param results The search results to display
+ * @param isLoading Whether the search is loading
+ * @returns A component displaying the search results
+ */
 export default function SearchResults({ results, isLoading }: SearchResultsProps) {
+  // State hooks
   const [printing, setPrinting] = useState<Record<string, boolean>>({});
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
   
-  // Sort results by average relevance score (highest first) and put unscored results at the end
-  const sortedResults = [...results].sort((a, b) => {
-    const calculateAverageScore = (result: SearchResult) => {
-      if (!result.relevant_pages || result.relevant_pages.length === 0) return -1;
-      // Check if start and end page is 1
-      const isPageOneOnly = result.relevant_pages.every(range => range.start === 1 && range.end === 1);
-      if (isPageOneOnly) return -1;
-      const sum = result.relevant_pages.reduce((sum, page) => sum + (page.score || 0), 0);
-      return sum / result.relevant_pages.length;
-    };
+  /**
+   * Calculates the average relevance score for a search result
+   * @param result The search result to calculate the score for
+   * @returns The average score or -1 if no relevant pages or only page 1
+   */
+  const calculateAverageScore = (result: SearchResult): number => {
+    if (!result.relevant_pages || result.relevant_pages.length === 0) return -1;
     
+    // Check if only page 1 is relevant (less accurate)
+    const isPageOneOnly = result.relevant_pages.every(range => range.start === 1 && range.end === 1);
+    if (isPageOneOnly) return -1;
+    
+    const sum = result.relevant_pages.reduce((sum, page) => sum + (page.score || 0), 0);
+    return sum / result.relevant_pages.length;
+  };
+  
+  /**
+   * Sorts results by relevance score
+   */
+  const sortedResults = [...results].sort((a, b) => {
     const scoreA = calculateAverageScore(a);
     const scoreB = calculateAverageScore(b);
     return scoreB - scoreA;
   });
 
-  // Calculate relevance percentage (using the average score among all pages)
-  const getRelevancePercentage = (result: SearchResult) => {
+  /**
+   * Calculates a percentage relevance display for a result
+   * @param result The search result to calculate relevance for
+   * @returns A string representation of relevance
+   */
+  const getRelevancePercentage = (result: SearchResult): string => {
     if (!result.relevant_pages || result.relevant_pages.length === 0) return 'Less Relevant';
-    // Check if start and end page is 1
+    
+    // Check if only page 1 is relevant (less accurate)
     const isPageOneOnly = result.relevant_pages.every(range => range.start === 1 && range.end === 1);
     if (isPageOneOnly) return 'Less Relevant';
     
     const scores = result.relevant_pages.map(page => page.score || 0);
     const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    const maxPossibleScore = 10; // This is an assumption, adjust based on your scoring system
+    const maxPossibleScore = 10; // Assumption based on scoring system
+    
     return `${Math.min(Math.round((averageScore / maxPossibleScore) * 100), 100)}% Relevant`;
   };
 
-  // Handle printing specific pages of a PDF
-  const handlePrint = async (result: SearchResult) => {
+  /**
+   * Formats page ranges for display
+   * @param ranges The page ranges to format
+   * @returns A formatted string of page ranges
+   */
+  const formatPageRange = (ranges: PageRange[] | null): string => {
+    if (!ranges || ranges.length === 0) return 'Unknown';
+    
+    // Sort ranges by start page
+    const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
+    
+    // Merge contiguous ranges
+    const mergedRanges: PageRange[] = [];
+    let currentRange = sortedRanges[0];
+    
+    for (let i = 1; i < sortedRanges.length; i++) {
+      const nextRange = sortedRanges[i];
+      
+      // Check if ranges are contiguous
+      if (currentRange.end + 1 >= nextRange.start) {
+        // Merge ranges by extending the end of current range
+        currentRange.end = Math.max(currentRange.end, nextRange.end);
+      } else {
+        // Ranges are not contiguous, add current range and start new one
+        mergedRanges.push(currentRange);
+        currentRange = nextRange;
+      }
+    }
+    
+    // Add the last range
+    mergedRanges.push(currentRange);
+    
+    // Format the merged ranges
+    return mergedRanges.map(range => `${range.start}-${range.end}`).join(', ');
+  };
+  
+  /**
+   * Handles printing specific pages of a PDF
+   * @param result The search result to print
+   */
+  const handlePrint = async (result: SearchResult): Promise<void> => {
     if (!result.relevant_pages || printing[result.id]) return;
     
     try {
@@ -83,43 +147,15 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
     }
   };
   
-  // Format page ranges for display
-  const formatPageRange = (ranges: PageRange[] | null) => {
-    if (!ranges || ranges.length === 0) return 'Unknown';
-    
-    // Sort ranges by start page
-    const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
-    
-    // Merge contiguous ranges
-    const mergedRanges: PageRange[] = [];
-    let currentRange = sortedRanges[0];
-    
-    for (let i = 1; i < sortedRanges.length; i++) {
-      const nextRange = sortedRanges[i];
-      
-      // Check if ranges are contiguous (end of current range is adjacent to start of next)
-      if (currentRange.end + 1 >= nextRange.start) {
-        // Merge ranges by extending the end of current range
-        currentRange.end = Math.max(currentRange.end, nextRange.end);
-      } else {
-        // Ranges are not contiguous, add current range and start new one
-        mergedRanges.push(currentRange);
-        currentRange = nextRange;
-      }
-    }
-    
-    // Add the last range
-    mergedRanges.push(currentRange);
-    
-    // Format the merged ranges
-    return mergedRanges.map(range => `${range.start}-${range.end}`).join(', ');
-  };
-  
-  // Handle image error
-  const handleImageError = (resultId: string) => {
+  /**
+   * Handles image load errors
+   * @param resultId The ID of the result with the failing image
+   */
+  const handleImageError = (resultId: string): void => {
     setImageErrors(prev => ({ ...prev, [resultId]: true }));
   };
   
+  // Render loading state
   if (isLoading) {
     return (
       <div className="flex flex-col items-center py-12">
@@ -129,6 +165,7 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
     );
   }
   
+  // Render empty state
   if (results.length === 0) {
     return (
       <div className="text-center py-12">
@@ -139,6 +176,7 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
     );
   }
   
+  // Render results
   return (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold">{sortedResults.length} Results</h2>

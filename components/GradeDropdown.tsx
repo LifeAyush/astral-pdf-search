@@ -1,5 +1,10 @@
+'use client';
+
 import { ChevronDown } from 'lucide-react';
 
+/**
+ * Enum for grade levels
+ */
 export enum Grade {
   ALL = 'all',
   KINDERGARTEN = 'K',
@@ -17,12 +22,24 @@ export enum Grade {
   GRADE_12 = '12',
 }
 
+/**
+ * Type definition for grade options
+ */
 type GradeOption = {
   id: number;
   label: string;
   value: Grade;
 };
 
+/**
+ * Props for the GradeDropdown component
+ */
+interface GradeDropdownProps {
+  value: Grade;
+  onChange: (value: Grade) => void;
+}
+
+// Constants
 const gradeOptions: GradeOption[] = [
   { id: 0, label: "All Grades", value: Grade.ALL },
   { id: 1, label: "Kindergarten", value: Grade.KINDERGARTEN },
@@ -40,17 +57,26 @@ const gradeOptions: GradeOption[] = [
   { id: 13, label: "Grade 12", value: Grade.GRADE_12 },
 ];
 
-interface GradeDropdownProps {
-  value: Grade;
-  onChange: (value: Grade) => void;
-}
-
+/**
+ * Dropdown component for selecting grade levels
+ * @param value The currently selected grade
+ * @param onChange Callback for when the selection changes
+ * @returns A dropdown select component for grades
+ */
 export function GradeDropdown({ value, onChange }: GradeDropdownProps) {
+  /**
+   * Handles the selection change event
+   * @param e The select change event
+   */
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    onChange(e.target.value as Grade);
+  };
+  
   return (
     <div className="relative h-full">
       <select 
         value={value}
-        onChange={(e) => onChange(e.target.value as Grade)}
+        onChange={handleChange}
         className="appearance-none h-full pl-3 pr-8 bg-gray-100 rounded-md text-sm text-gray-900 border border-gray-200 focus:outline-none focus:ring-1 focus:ring-gray-400"
       >
         {gradeOptions.map((grade) => (

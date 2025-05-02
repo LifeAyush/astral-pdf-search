@@ -6,38 +6,62 @@ import SearchBar from '@/components/SearchBar';
 import SearchResults from '@/components/SearchResults';
 import { SearchResult } from '@/types/index';
 
+// Type definitions
+type HistoryItem = {
+  id: string;
+  query: string;
+};
+
+type SearchResponse = {
+  searchId: string;
+  results: SearchResult[];
+  isCached?: boolean;
+  error?: string;
+};
+
+type HistoryResponse = {
+  searches?: HistoryItem[];
+  error?: string;
+};
+
+type ResultsResponse = {
+  searchId?: string;
+  query: string;
+  results: SearchResult[];
+  error?: string;
+};
+
+// Constants
+const POLLING_INTERVAL = 3000; // 3 seconds
+
+/**
+ * Home page component with PDF search functionality
+ * @returns The home page component
+ */
 export default function Home() {
-  const [query, setQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  // State hooks
+  const [query, setQuery] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [searchHistory, setSearchHistory] = useState<{id: string, query: string}[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<HistoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState<boolean>(false);
   const [currentSearchId, setCurrentSearchId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Navigation hooks
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // Refs for polling
+  // Refs
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   
-  // Load search history on component mount
-  useEffect(() => {
-    fetchSearchHistory();
-  }, []);
-  
-  // Check for search ID in URL
-  useEffect(() => {
-    const searchId = searchParams.get('id');
-    if (searchId) {
-      fetchResultsById(searchId);
-    }
-  }, [searchParams]);
-  
-  // Function to fetch search history
-  const fetchSearchHistory = async () => {
+  /**
+   * Fetches the search history from the API
+   */
+  const fetchSearchHistory = async (): Promise<void> => {
     try {
       const response = await fetch('/api/history');
-      const data = await response.json();
+      const data = await response.json() as HistoryResponse;
       
       if (data.searches) {
         setSearchHistory(data.searches);
@@ -47,14 +71,17 @@ export default function Home() {
     }
   };
   
-  // Function to fetch results by search ID
-  const fetchResultsById = async (searchId: string) => {
+  /**
+   * Fetches search results by ID
+   * @param searchId The ID of the search to fetch results for
+   */
+  const fetchResultsById = async (searchId: string): Promise<void> => {
     try {
       setIsSearching(true);
       setError(null);
       
       const response = await fetch(`/api/results/${searchId}`);
-      const data = await response.json();
+      const data = await response.json() as ResultsResponse;
       
       if (data.error) {
         setError(data.error);
@@ -67,21 +94,24 @@ export default function Home() {
       
       // Start polling for updates if any results are still processing
       const hasProcessingResults = data.results.some(
-        (result: SearchResult) => result.status === 'processing'
+        (result) => result.status === 'processing'
       );
       
       if (hasProcessingResults) {
         startPolling(searchId);
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setIsSearching(false);
     }
   };
   
-  // Function to handle search submissions
-  const handleSearch = async (searchQuery: string) => {
+  /**
+   * Handles a search submission
+   * @param searchQuery The query to search for
+   */
+  const handleSearch = async (searchQuery: string): Promise<void> => {
     if (!searchQuery.trim()) return;
     
     try {
@@ -90,10 +120,7 @@ export default function Home() {
       setSearchResults([]);
       
       // Stop any existing polling
-      if (pollingInterval.current) {
-        clearInterval(pollingInterval.current);
-        pollingInterval.current = null;
-      }
+      stopPolling();
       
       const response = await fetch('/api/search', {
         method: 'POST',
@@ -101,7 +128,7 @@ export default function Home() {
         body: JSON.stringify({ query: searchQuery })
       });
       
-      const data = await response.json();
+      const data = await response.json() as SearchResponse;
       
       if (data.error) {
         setError(data.error);
@@ -121,53 +148,78 @@ export default function Home() {
       if (!data.isCached) {
         startPolling(data.searchId);
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
     } finally {
       setIsSearching(false);
     }
   };
   
-  // Function to start polling for result updates
-  const startPolling = (searchId: string) => {
-    if (pollingInterval.current) {
-      clearInterval(pollingInterval.current);
-    }
+  /**
+   * Starts polling for result updates
+   * @param searchId The ID of the search to poll for
+   */
+  const startPolling = (searchId: string): void => {
+    stopPolling();
     
     pollingInterval.current = setInterval(async () => {
       try {
         const response = await fetch(`/api/results/${searchId}`);
-        const data = await response.json();
+        const data = await response.json() as ResultsResponse;
         
         setSearchResults(data.results);
         
         // Check if all results are processed
         const allProcessed = data.results.every(
-          (result: SearchResult) => result.status !== 'processing'
+          (result) => result.status !== 'processing'
         );
         
-        if (allProcessed && pollingInterval.current) {
-          clearInterval(pollingInterval.current);
-          pollingInterval.current = null;
+        if (allProcessed) {
+          stopPolling();
         }
       } catch (error) {
         console.error('Polling error:', error);
-        
-        // Stop polling on error
-        if (pollingInterval.current) {
-          clearInterval(pollingInterval.current);
-          pollingInterval.current = null;
-        }
+        stopPolling();
       }
-    }, 3000); // Poll every 3 seconds
+    }, POLLING_INTERVAL);
   };
   
-  // Clean up polling on unmount
+  /**
+   * Stops polling for result updates
+   */
+  const stopPolling = (): void => {
+    if (pollingInterval.current) {
+      clearInterval(pollingInterval.current);
+      pollingInterval.current = null;
+    }
+  };
+  
+  /**
+   * Handles clicking on a history item
+   * @param item The history item that was clicked
+   */
+  const handleHistoryItemClick = (item: HistoryItem): void => {
+    setShowHistory(false);
+    fetchResultsById(item.id);
+  };
+  
+  // Effect to load search history on component mount
+  useEffect(() => {
+    fetchSearchHistory();
+  }, []);
+  
+  // Effect to check for search ID in URL
+  useEffect(() => {
+    const searchId = searchParams.get('id');
+    if (searchId) {
+      fetchResultsById(searchId);
+    }
+  }, [searchParams]);
+  
+  // Effect to clean up polling on unmount
   useEffect(() => {
     return () => {
-      if (pollingInterval.current) {
-        clearInterval(pollingInterval.current);
-      }
+      stopPolling();
     };
   }, []);
   
@@ -184,10 +236,7 @@ export default function Home() {
           searchHistory={searchHistory}
           showHistory={showHistory}
           setShowHistory={setShowHistory}
-          onHistoryItemClick={(item) => {
-            setShowHistory(false);
-            fetchResultsById(item.id);
-          }}
+          onHistoryItemClick={handleHistoryItemClick}
         />
         
         {error && (

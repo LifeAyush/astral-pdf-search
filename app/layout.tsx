@@ -2,12 +2,21 @@ import { Geist } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import "./globals.css";
 
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+// Type definitions
+type RootLayoutProps = Readonly<{
+  children: React.ReactNode;
+}>;
 
+// Validate environment variables and set default URL
+const getBaseUrl = (): string => {
+  return process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000";
+};
+
+// Configure metadata
 export const metadata = {
-  metadataBase: new URL(defaultUrl),
+  metadataBase: new URL(getBaseUrl()),
   title: "AI PDF Challenge",
   description: "AI-powered PDF processing application",
   icons: {
@@ -15,19 +24,23 @@ export const metadata = {
   },
 };
 
+// Configure font
 const geistSans = Geist({
   display: "swap",
   subsets: ["latin"],
 });
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+/**
+ * Root layout component that wraps the entire application
+ * Provides theme support and basic layout structure
+ * 
+ * @param props.children The child components to render
+ * @returns The root layout component
+ */
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className={geistSans.className} suppressHydrationWarning>
-      <body className="bg-background text-foreground" cz-shortcut-listen="true">
+      <body className="bg-background text-foreground">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

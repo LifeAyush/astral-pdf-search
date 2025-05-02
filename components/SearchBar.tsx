@@ -3,12 +3,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { MagnifyingGlassIcon, ClockIcon } from '@heroicons/react/24/outline';
 
+/**
+ * Type definition for search history item
+ */
 interface SearchHistoryItem {
   id: string;
   query: string;
   created_at?: string;
 }
 
+/**
+ * Props for the SearchBar component
+ */
 interface SearchBarProps {
   query: string;
   setQuery: (query: string) => void;
@@ -20,6 +26,11 @@ interface SearchBarProps {
   onHistoryItemClick: (item: SearchHistoryItem) => void;
 }
 
+/**
+ * SearchBar component with search history functionality
+ * @param props Component props
+ * @returns A search bar component with history dropdown
+ */
 export default function SearchBar({
   query,
   setQuery,
@@ -30,14 +41,75 @@ export default function SearchBar({
   setShowHistory,
   onHistoryItemClick
 }: SearchBarProps) {
-  const [isFocused, setIsFocused] = useState(false);
+  // State hooks
+  const [isFocused, setIsFocused] = useState<boolean>(false);
   const [selectedGrade, setSelectedGrade] = useState<string>('');
+  
+  // Refs
   const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   
-  // Handle outside clicks to close history dropdown
+  /**
+   * Formats a date string for display
+   * @param dateString The ISO date string to format
+   * @returns A formatted date string
+   */
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return '';
+    
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
+  };
+  
+  /**
+   * Handles search form submission
+   * @param e The form submission event
+   */
+  const handleSubmit = (e: React.FormEvent): void => {
+    e.preventDefault();
+    if (query.trim()) {
+      const searchQuery = selectedGrade ? `${query} grade ${selectedGrade}` : query;
+      onSearch(searchQuery);
+      setShowHistory(false);
+    }
+  };
+  
+  /**
+   * Handles input focus event
+   */
+  const handleInputFocus = (): void => {
+    setIsFocused(true);
+    setShowHistory(true);
+  };
+  
+  /**
+   * Handles grade selection change
+   * @param e The select change event
+   */
+  const handleGradeChange = (e: React.ChangeEvent<HTMLSelectElement>): void => {
+    setSelectedGrade(e.target.value);
+  };
+  
+  /**
+   * Handles query input change
+   * @param e The input change event
+   */
+  const handleQueryChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    setQuery(e.target.value);
+  };
+  
+  // Effect to handle clicks outside the search history dropdown
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    /**
+     * Handles clicks outside the search components
+     * @param event The mouse event
+     */
+    function handleClickOutside(event: MouseEvent): void {
       if (
         historyRef.current && 
         !historyRef.current.contains(event.target as Node) &&
@@ -54,36 +126,13 @@ export default function SearchBar({
     };
   }, [setShowHistory]);
   
-  // Handle search submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) {
-      const searchQuery = selectedGrade ? `${query} grade ${selectedGrade}` : query;
-      onSearch(searchQuery);
-      setShowHistory(false);
-    }
-  };
-
-  // Format the date string for display
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '';
-    
-    const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    }).format(date);
-  };
-  
   return (
     <div className="relative mb-8">
       <form onSubmit={handleSubmit} className="relative">
         <div className="relative flex gap-2">
           <select
             value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
+            onChange={handleGradeChange}
             className="py-3 px-4 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-white bg-black"
             disabled={isSearching}
           >
@@ -99,11 +148,8 @@ export default function SearchBar({
               ref={inputRef}
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => {
-                setIsFocused(true);
-                setShowHistory(true);
-              }}
+              onChange={handleQueryChange}
+              onFocus={handleInputFocus}
               placeholder="Search for PDF worksheets, e.g., 'Multiplication 2 digit worksheets'"
               className="w-full py-3 px-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-white"
               disabled={isSearching}
