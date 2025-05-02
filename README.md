@@ -44,8 +44,9 @@ A full-stack web application to search, preview, and print relevant pages from p
 ```bash
 git clone <repository-url>
 cd pdf-search
+```
 
-2. Install Dependencies
+### 2. Install Dependencies
 
 npm install
 # or
@@ -53,7 +54,7 @@ yarn install
 # or
 bun install
 
-3. Configure Environment Variables
+### 3. Configure Environment Variables
 
 Copy and edit .env.example:
 
@@ -70,7 +71,7 @@ GOOGLE_API_KEY	Google API Key with Search API enabled
 
 ⸻
 
-4. Initialize Supabase Schema
+### 4. Initialize Supabase Schema
 
 Use Supabase SQL Editor and run:
 
@@ -97,7 +98,7 @@ Enable Row-Level Security and create appropriate policies to allow read/write by
 
 ⸻
 
-5. Run the Development Server
+### 5. Run the Development Server
 
 npm run dev
 # or
