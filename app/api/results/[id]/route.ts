@@ -9,10 +9,10 @@ const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const searchId = params.id;
+    const { id: searchId } = await params;
     
     if (!searchId) {
       return NextResponse.json({ error: 'Search ID is required' }, { status: 400 });
