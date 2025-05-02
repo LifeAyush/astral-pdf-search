@@ -31,6 +31,7 @@ export default function SearchBar({
   onHistoryItemClick
 }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   
@@ -57,7 +58,8 @@ export default function SearchBar({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (query.trim()) {
-      onSearch(query);
+      const searchQuery = selectedGrade ? `${query} grade ${selectedGrade}` : query;
+      onSearch(searchQuery);
       setShowHistory(false);
     }
   };
@@ -78,24 +80,39 @@ export default function SearchBar({
   return (
     <div className="relative mb-8">
       <form onSubmit={handleSubmit} className="relative">
-        <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onFocus={() => {
-              setIsFocused(true);
-              setShowHistory(true);
-            }}
-            placeholder="Search for PDF worksheets, e.g., 'Multiplication 2 digit worksheets'"
-            className="w-full py-3 px-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-white"
+        <div className="relative flex gap-2">
+          <select
+            value={selectedGrade}
+            onChange={(e) => setSelectedGrade(e.target.value)}
+            className="py-3 px-4 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-white bg-black"
             disabled={isSearching}
-          />
-          <MagnifyingGlassIcon
-            className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
-            aria-hidden="true"
-          />
+          >
+            <option value="">All Grades</option>
+            {Array.from({ length: 10 }, (_, i) => i + 1).map((grade) => (
+              <option key={grade} value={grade}>
+                Grade {grade}
+              </option>
+            ))}
+          </select>
+          <div className="flex-1 relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => {
+                setIsFocused(true);
+                setShowHistory(true);
+              }}
+              placeholder="Search for PDF worksheets, e.g., 'Multiplication 2 digit worksheets'"
+              className="w-full py-3 px-12 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none text-white"
+              disabled={isSearching}
+            />
+            <MagnifyingGlassIcon
+              className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400"
+              aria-hidden="true"
+            />
+          </div>
         </div>
         
         <button
