@@ -195,9 +195,9 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
               )}
               
               <div className="flex flex-col space-y-2 text-sm">
-                {result.total_pages && (
+                {result.total_pages !== undefined && (
                   <p>
-                    <span className="font-medium">Total Pages:</span> {result.total_pages}
+                    <span className="font-medium">Total Pages:</span> {result.total_pages || 1}
                   </p>
                 )}
                 
