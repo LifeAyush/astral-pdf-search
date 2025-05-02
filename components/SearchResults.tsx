@@ -13,7 +13,7 @@ interface SearchResultsProps {
 export default function SearchResults({ results, isLoading }: SearchResultsProps) {
   const [printing, setPrinting] = useState<Record<string, boolean>>({});
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
-  console.log('Results:', results);
+  
   // Sort results by average relevance score (highest first) and put unscored results at the end
   const sortedResults = [...results].sort((a, b) => {
     const calculateAverageScore = (result: SearchResult) => {

@@ -32,8 +32,6 @@ async function extractPages(buffer: Buffer) {
   const totalPages = pdfData.numpages || 
                     (pdfData.info && pdfData.info.Pages ? parseInt(pdfData.info.Pages) : 0);
   
-  console.log(`Found ${totalPages} pages in PDF`);
-  
   // Extract text from each page
   for (let i = 0; i < totalPages; i++) {
     const pageData = await pdfParse(buffer, { max: i + 1 });
@@ -71,15 +69,11 @@ async function findRelevantPage(pdfUrl: string, query: string) {
   const buffer = Buffer.from(await response.arrayBuffer());
   const pages = await extractPages(buffer);
 
-  console.log(`Processing ${pages.length} pages for relevance`);
-
   // Limit to first 10 pages
   const pagesToProcess = pages.slice(0, 10);
-  console.log(`Processing first ${pagesToProcess.length} pages for relevance check`);
 
   const scored = pagesToProcess.map(p => {
     const score = scorePage(p.text, query);
-    console.log(`Page ${p.page} score: ${score}`);
     return {
       page: p.page,
       snippet: p.text.slice(0, 300),
@@ -92,9 +86,6 @@ async function findRelevantPage(pdfUrl: string, query: string) {
     .sort((a, b) => b.score - a.score)
     .slice(0, 5)
     .filter(page => page.score > 0); // Only include pages with non-zero scores
-
-  console.log(`Found ${topPages.length} relevant pages with scores:`, 
-    topPages.map(p => `Page ${p.page}: ${p.score}`).join(', '));
 
   return topPages;
 }
@@ -170,7 +161,6 @@ export async function POST(request: Request) {
     const processedResults = await Promise.all(
       searchResponse.data.items.map(async (item) => {
         try {
-          console.log('Processing search result:', item.pagemap?.cse_thumbnail);
           // Extract basic metadata
           const result = {
             search_id: searchId,
@@ -193,7 +183,7 @@ export async function POST(request: Request) {
             console.error('Error storing result:', resultError);
             return null;
           }
-          // console.log('Processing PDF:', item);
+
           // Start processing the PDF in the background with the query
           processPdf(item.link!, storedResult.id, searchId, query).catch(console.error);
 
@@ -225,9 +215,6 @@ export async function POST(request: Request) {
 // Process PDF to extract relevant pages and generate preview
 async function processPdf(pdfUrl: string, resultId: string, searchId: string, query: string) {
   try {
-    console.log('Starting PDF processing for URL:', pdfUrl);
-    console.log('Result ID:', resultId);
-    
     // Fetch the PDF file
     const response = await fetch(pdfUrl);
     
@@ -235,25 +222,19 @@ async function processPdf(pdfUrl: string, resultId: string, searchId: string, qu
       throw new Error(`Failed to fetch PDF: ${response.statusText}`);
     }
     
-    console.log('Successfully fetched PDF');
-    
     // Get the PDF as buffer
     const pdfBuffer = Buffer.from(await response.arrayBuffer());
-    console.log('PDF buffer size:', pdfBuffer.length);
     
     // Parse the PDF to get total pages
     const pdfData = await pdfParse(pdfBuffer);
-    console.log('PDF parsed successfully');
     
     // Calculate total pages
     const totalPages = pdfData.numpages || 
                       (pdfData.info && pdfData.info.Pages ? parseInt(pdfData.info.Pages) : 0);
     
-    console.log('Calculated total pages:', totalPages);
     
     // Find the most relevant pages
     const relevantPages = await findRelevantPage(pdfUrl, query);
-    console.log('Relevant pages:', relevantPages);
 
     // Generate preview image from first page
     const options = {
@@ -296,9 +277,6 @@ async function processPdf(pdfUrl: string, resultId: string, searchId: string, qu
       console.error('Error updating database:', updateError);
       throw updateError;
     }
-    
-    console.log('Successfully updated database with total pages, relevant pages info, and preview image');
-    
   } catch (error) {
     console.error('PDF processing error:', error);
     // Update the result with error status
