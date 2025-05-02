@@ -14,4 +14,6 @@ export interface SearchResult {
 export interface PageRange {
   start: number
   end: number
+  score?: number
+  snippet?: string
 }
