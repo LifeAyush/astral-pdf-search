@@ -12,7 +12,37 @@ interface SearchResultsProps {
 
 export default function SearchResults({ results, isLoading }: SearchResultsProps) {
   const [printing, setPrinting] = useState<Record<string, boolean>>({});
-  
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  console.log('Results:', results);
+  // Sort results by average relevance score (highest first) and put unscored results at the end
+  const sortedResults = [...results].sort((a, b) => {
+    const calculateAverageScore = (result: SearchResult) => {
+      if (!result.relevant_pages || result.relevant_pages.length === 0) return -1;
+      // Check if start and end page is 1
+      const isPageOneOnly = result.relevant_pages.every(range => range.start === 1 && range.end === 1);
+      if (isPageOneOnly) return -1;
+      const sum = result.relevant_pages.reduce((sum, page) => sum + (page.score || 0), 0);
+      return sum / result.relevant_pages.length;
+    };
+    
+    const scoreA = calculateAverageScore(a);
+    const scoreB = calculateAverageScore(b);
+    return scoreB - scoreA;
+  });
+
+  // Calculate relevance percentage (using the average score among all pages)
+  const getRelevancePercentage = (result: SearchResult) => {
+    if (!result.relevant_pages || result.relevant_pages.length === 0) return 'Less Relevant';
+    // Check if start and end page is 1
+    const isPageOneOnly = result.relevant_pages.every(range => range.start === 1 && range.end === 1);
+    if (isPageOneOnly) return 'Less Relevant';
+    
+    const scores = result.relevant_pages.map(page => page.score || 0);
+    const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    const maxPossibleScore = 10; // This is an assumption, adjust based on your scoring system
+    return `${Math.min(Math.round((averageScore / maxPossibleScore) * 100), 100)}% Relevant`;
+  };
+
   // Handle printing specific pages of a PDF
   const handlePrint = async (result: SearchResult) => {
     if (!result.relevant_pages || printing[result.id]) return;
@@ -57,10 +87,37 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
   const formatPageRange = (ranges: PageRange[] | null) => {
     if (!ranges || ranges.length === 0) return 'Unknown';
     
-    return ranges.map(range => {
-      if (range.start === range.end) return `Page ${range.start}`;
-      return `Pages ${range.start}-${range.end}`;
-    }).join(', ');
+    // Sort ranges by start page
+    const sortedRanges = [...ranges].sort((a, b) => a.start - b.start);
+    
+    // Merge contiguous ranges
+    const mergedRanges: PageRange[] = [];
+    let currentRange = sortedRanges[0];
+    
+    for (let i = 1; i < sortedRanges.length; i++) {
+      const nextRange = sortedRanges[i];
+      
+      // Check if ranges are contiguous (end of current range is adjacent to start of next)
+      if (currentRange.end + 1 >= nextRange.start) {
+        // Merge ranges by extending the end of current range
+        currentRange.end = Math.max(currentRange.end, nextRange.end);
+      } else {
+        // Ranges are not contiguous, add current range and start new one
+        mergedRanges.push(currentRange);
+        currentRange = nextRange;
+      }
+    }
+    
+    // Add the last range
+    mergedRanges.push(currentRange);
+    
+    // Format the merged ranges
+    return mergedRanges.map(range => `${range.start}-${range.end}`).join(', ');
+  };
+  
+  // Handle image error
+  const handleImageError = (resultId: string) => {
+    setImageErrors(prev => ({ ...prev, [resultId]: true }));
   };
   
   if (isLoading) {
@@ -84,37 +141,49 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
   
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold">{results.length} Results</h2>
+      <h2 className="text-xl font-semibold">{sortedResults.length} Results</h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {results.map((result) => (
+        {sortedResults.map((result) => (
           <div 
             key={result.id}
             className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
           >
-            {/* Preview Image */}
+            {/* Preview Image with Score Badge */}
             <div className="relative h-48 bg-gray-100">
+              {result.relevant_pages && (
+                <div className="absolute top-2 right-2 bg-blue-600 text-white px-2 py-1 rounded-md text-sm font-medium">
+                  {getRelevancePercentage(result)}
+                </div>
+              )}
               {result.status === 'processing' ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                   <span className="ml-2 text-sm text-gray-600">Processing PDF...</span>
                 </div>
-              ) : result.preview_image_url ? 
-              // (
-              //   <div className="relative h-full w-full">
-              //     <Image
-              //       src={result.preview_image_url}
-              //       alt={result.title}
-              //       fill
-              //       className="object-contain"
-              //     />
-              //   </div>
-              // ) :
-               (
+              ) : result.preview_image_url && !imageErrors[result.id] ? (
+                result.preview_image_url.startsWith('/') ? (
+                  <Image
+                    src={result.preview_image_url}
+                    alt="PDF Document"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    onError={() => handleImageError(result.id)}
+                  />
+                ) : (
+                  <img
+                    src={result.preview_image_url}
+                    alt="PDF Document"
+                    className="w-full h-full object-cover"
+                    onError={() => handleImageError(result.id)}
+                  />
+                )
+              ) : (
                 <div className="flex items-center justify-center h-full">
                   <DocumentTextIcon className="h-16 w-16 text-gray-400" />
                 </div>
-              ):(null)}
+              )}
             </div>
             
             {/* Result Details */}
@@ -132,11 +201,10 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
                   </p>
                 )}
                 
-                {result.relevant_pages && (
-                  <p>
-                    <span className="font-medium">Relevant:</span>{' '}
-                    {formatPageRange(result.relevant_pages)}
-                  </p>
+                {result.relevant_pages && result.relevant_pages.length > 0 && (
+                  <div>
+                    <span className="font-medium">Relevant Pages: {formatPageRange(result.relevant_pages)}</span>
+                  </div>
                 )}
               </div>
               
