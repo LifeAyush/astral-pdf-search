@@ -99,20 +99,22 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
                   <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                   <span className="ml-2 text-sm text-gray-600">Processing PDF...</span>
                 </div>
-              ) : result.preview_image_url ? (
-                <div className="relative h-full w-full">
-                  <Image
-                    src={result.preview_image_url}
-                    alt={result.title}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-              ) : (
+              ) : result.preview_image_url ? 
+              // (
+              //   <div className="relative h-full w-full">
+              //     <Image
+              //       src={result.preview_image_url}
+              //       alt={result.title}
+              //       fill
+              //       className="object-contain"
+              //     />
+              //   </div>
+              // ) :
+               (
                 <div className="flex items-center justify-center h-full">
                   <DocumentTextIcon className="h-16 w-16 text-gray-400" />
                 </div>
-              )}
+              ):(null)}
             </div>
             
             {/* Result Details */}

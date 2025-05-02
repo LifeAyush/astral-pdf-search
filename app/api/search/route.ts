@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import fetch from 'node-fetch';
-import * as pdfjs from 'pdfjs-dist';
 import { Database } from '@/types/supabase';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+import fetch from 'node-fetch';
 
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -110,14 +110,13 @@ export async function POST(request: Request) {
             console.error('Error storing result:', resultError);
             return null;
           }
-
+          // console.log('Processing PDF:', item);
           // Start processing the PDF in the background
           processPdf(item.link!, storedResult.id, searchId).catch(console.error);
 
           return {
             ...result,
-            id: storedResult.id,
-            status: 'processing'
+            id: storedResult.id
           };
         } catch (error) {
           console.error('Error processing search result:', error);
@@ -143,43 +142,68 @@ export async function POST(request: Request) {
 // Process PDF to extract relevant pages and generate preview
 async function processPdf(pdfUrl: string, resultId: string, searchId: string) {
   try {
-    // Fetch PDF
+    console.log('Starting PDF processing for URL:', pdfUrl);
+    console.log('Result ID:', resultId);
+    
+    // Fetch the PDF file
     const response = await fetch(pdfUrl);
-    const pdfArrayBuffer = await response.arrayBuffer();
     
-    // Load PDF using pdf.js
-    const loadingTask = pdfjs.getDocument({ data: new Uint8Array(pdfArrayBuffer) });
-    const pdf = await loadingTask.promise;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+    }
     
-    // Get total page count
-    const totalPages = pdf.numPages;
+    console.log('Successfully fetched PDF');
     
-    // For now, we'll consider the first page as relevant and use it as preview
-    // In a production app, you would analyze content to find truly relevant pages
-    const relevantPages = [{ start: 1, end: Math.min(5, totalPages) }];
+    // Get the PDF as buffer
+    const pdfBuffer = Buffer.from(await response.arrayBuffer());
+    console.log('PDF buffer size:', pdfBuffer.length);
     
-    // Generate preview image (in a real app, this would be stored in a storage bucket)
-    // For simplicity, we'll just note that the first page is the preview
-    const previewImageUrl = `/api/pdf-preview?url=${encodeURIComponent(pdfUrl)}&page=1`;
+    // Parse the PDF to get total pages
+    const pdfData = await pdfParse(pdfBuffer, {
+      max: 1, // Only parse the first page for faster processing
+    });
     
-    // Update the search result with processed data
-    await supabase
+    console.log('PDF parsed successfully');
+    console.log('PDF Data:', {
+      numpages: pdfData.numpages,
+      info: pdfData.info,
+      metadata: pdfData.metadata
+    });
+    
+    // Calculate total pages
+    const totalPages = pdfData.numpages || 
+                      (pdfData.info && pdfData.info.Pages ? parseInt(pdfData.info.Pages) : 0);
+    
+    console.log('Calculated total pages:', totalPages);
+    
+    // Update the search result with the total pages
+    const { error: updateError } = await supabase
       .from('search_results')
       .update({
-        total_pages: totalPages,
-        relevant_pages: relevantPages,
-        preview_image_url: previewImageUrl
+        preview_image_url: pdfUrl,
+        total_pages: totalPages
       })
       .eq('id', resultId);
+    
+    if (updateError) {
+      console.error('Error updating database:', updateError);
+      throw updateError;
+    }
+    
+    console.log('Successfully updated database with total pages:', totalPages);
     
   } catch (error) {
     console.error('PDF processing error:', error);
     // Update the result with error status
-    await supabase
+    const { error: updateError } = await supabase
       .from('search_results')
       .update({
-        description: 'Error processing PDF'
+        description: 'Error processing PDF: ' + (error instanceof Error ? error.message : String(error))
       })
       .eq('id', resultId);
+      
+    if (updateError) {
+      console.error('Error updating error status:', updateError);
+    }
   }
 }
