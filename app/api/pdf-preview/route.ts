@@ -127,6 +127,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
-// Set max duration for the API route
-export const maxDuration = CONFIG.MAX_DURATION;

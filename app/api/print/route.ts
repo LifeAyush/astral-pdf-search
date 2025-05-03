@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 import fetch from 'node-fetch';
 
-// Set max duration to 60 seconds
-export const maxDuration = 60;
-
 // Type definitions
 type PageRange = {
   start: number;

@@ -7,9 +7,6 @@ import fetch from 'node-fetch';
 import { fromBuffer } from 'pdf2pic';
 import { mkdir } from 'fs/promises';
 
-// Set max duration to 60 seconds (for Vercel's Edge functions)
-export const maxDuration = 60;
-
 // Type definitions
 type SearchRequest = {
   query: string;
