@@ -43,7 +43,7 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
   /**
    * Sorts results by relevance score
    */
-  const sortedResults = [...results].sort((a, b) => {
+  const sortedResults = [...(results || [])].sort((a, b) => {
     const scoreA = calculateAverageScore(a);
     const scoreB = calculateAverageScore(b);
     return scoreB - scoreA;
@@ -166,7 +166,7 @@ export default function SearchResults({ results, isLoading }: SearchResultsProps
   }
   
   // Render empty state
-  if (results.length === 0) {
+  if (results?.length === 0) {
     return (
       <div className="text-center py-12">
         <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
