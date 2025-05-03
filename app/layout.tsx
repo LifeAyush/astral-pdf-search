@@ -40,7 +40,7 @@ const geistSans = Geist({
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className={geistSans.className} suppressHydrationWarning>
-      <body className="bg-background text-foreground">
+      <body className="bg-background text-foreground" cz-shortcut-listen="true">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
